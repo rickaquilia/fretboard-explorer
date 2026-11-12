@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Fretboard Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Karla:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f0dd; --bg2:#ede3c8; --panel:#fffdf3; --panel2:#f1e8cf;
+    --ink:#212b1e; --muted:#68735c; --line:#ddd0ab;
+    --pine:#1d4530; --pine2:#2a5c40; --brass:#a87b1f; --brass-bright:#d9a83f; --brass-soft:#f4e7c0;
+    --gold:#c9a86a; --good:#177245; --bad:#b42318; --bad-bg:#fdecea; --good-bg:#e6f4ec;
+    --wood:#2a1408; --wood2:#452712; --fretwire:#c8cdd1; --string:#9aa3a8;
+    --shadow:0 10px 26px rgba(74,56,10,.13);
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0d120c; --bg2:#11190f; --panel:#17211a; --panel2:#1f2c20;
+      --ink:#f1ecd8; --muted:#a7b29b; --line:#35422f;
+      --pine:#f1ecd8; --pine2:#ffffff; --brass:#e0aa3e; --brass-bright:#f0c25e; --brass-soft:#2e2712;
+      --shadow:0 10px 30px rgba(0,0,0,.42);
+      --good-bg:#14301d; --bad-bg:#3a1a14;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Karla",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  button,select{font:inherit;min-height:44px}
+  button{cursor:pointer}
+  a{color:var(--brass)}
+  .wrap{max-width:1120px;margin:0 auto;padding:18px 18px 56px}
+  /* header / intro */
+  .intro{padding:10px 0 16px;border-bottom:3px double var(--line);margin-bottom:4px}
+  .intro h1{font-family:"Zilla Slab",serif;font-weight:700;font-size:clamp(34px,6vw,56px);line-height:1.02;letter-spacing:-.01em;margin:0;color:var(--pine)}
+  .intro h1 em{font-style:italic;color:var(--brass)}
+  .intro p{margin:12px 0 0;max-width:640px;font-size:17px;line-height:1.55;color:var(--muted)}
+  .intro p strong{color:var(--ink)}
+  .byline{margin-top:14px !important;font-family:"IBM Plex Mono",monospace !important;font-size:12.5px !important;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--brass) !important;display:flex;align-items:center;gap:10px}
+  .byline::before{content:"";width:28px;height:2px;background:var(--brass);flex:none}
+  /* tabs */
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 18px;background:var(--panel);border:1.5px solid var(--line);padding:6px;border-radius:12px;box-shadow:var(--shadow)}
+  .tab{flex:1 1 140px;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:15px;padding:11px 14px;border-radius:7px;transition:.15s}
+  .tab[aria-selected="true"]{background:var(--pine);color:#f6f0dd}
+  @media (prefers-color-scheme: dark){ .tab[aria-selected="true"]{background:var(--brass);color:#241a03} }
+  .panel-section{display:none}
+  .panel-section.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){ .panel-section.active{animation:none} }
+  /* cards */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  /* controls */
+  .controls{padding:16px}
+  .controls-grid{display:grid;grid-template-columns:1fr;gap:16px}
+  @media(min-width:760px){ .controls-grid{grid-template-columns:170px 1fr} }
+  label.field-label{display:block;font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  select{width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--line);background:var(--panel2);color:var(--ink);font-weight:700;font-size:16px}
+  .seg{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);padding:5px;border-radius:8px}
+  .seg button{flex:1;border:0;background:transparent;border-radius:6px;font-weight:700;color:var(--muted);padding:8px}
+  .seg button.on{background:var(--panel);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.10)}
+  .pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .pill{border:1.5px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 14px;font-weight:600;font-size:14px;min-height:40px}
+  .pill.on{background:var(--brass);border-color:var(--brass);color:#241a03}
+  /* fretboard */
+  .board-card{margin-top:16px;padding:18px 14px 14px;overflow:hidden}
+  .board-head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;justify-content:space-between;padding:0 4px 14px}
+  .now-title{font-family:"Zilla Slab",serif;font-size:29px;font-weight:700;line-height:1;color:var(--pine);margin:0}
+  .now-sub{color:var(--muted);font-size:14px;margin-top:6px;line-height:1.45;max-width:520px}
+  .note-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;padding:6px 10px;border-radius:6px;background:var(--brass-soft);color:var(--pine)}
+  .chip.root{background:var(--pine);color:#f6f0dd}
+  @media (prefers-color-scheme: dark){ .chip{color:var(--ink)} .chip.root{background:var(--brass);color:#241a03} }
+  .play-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:0;border-radius:8px;padding:11px 16px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+  .btn-primary{background:var(--brass);color:#241a03}
+  .btn-primary:active{transform:scale(.98)}
+  .btn-ghost{background:var(--panel2);color:var(--ink);border:1.5px solid var(--line)}
+  .btn-navy{background:var(--pine);color:#f6f0dd}
+  @media (prefers-color-scheme: dark){ .btn-navy{background:var(--brass);color:#241a03} }
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .board-scroll{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .board-scroll::-webkit-scrollbar{height:8px}
+  .board-scroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+  .fretboard{--cell:46px;min-width:calc(var(--cell)*16 + 44px);background:linear-gradient(180deg,var(--wood2),var(--wood));border-radius:8px;padding:14px 10px 10px;position:relative}
+  @media(max-width:640px){ .fretboard{--cell:42px} }
+  .fret-numbers,.fb-row{display:grid;grid-template-columns:34px repeat(16,1fr);align-items:center}
+  .fret-numbers{margin-bottom:4px}
+  .fret-numbers span{text-align:center;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;color:#cbb9a3}
+  .fret-numbers span:first-child{color:transparent}
+  .fb-row{height:44px;position:relative}
+  .fb-row::before{content:"";position:absolute;left:34px;right:0;top:50%;height:var(--sw,2px);background:linear-gradient(180deg,#e8ecee,var(--string));transform:translateY(-50%);opacity:.9}
+  .string-name{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;color:#e8dcc8;text-align:center;position:relative;z-index:2}
+  .cell{position:relative;z-index:2;height:44px;border:0;background:transparent;display:flex;align-items:center;justify-content:center;padding:0;border-right:2px solid rgba(200,205,209,.55)}
+  .cell.open-cell{border-right:5px solid #e8e2d4}
+  .cell.inlay::after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:rgba(232,220,200,.28);bottom:-2px;left:50%;transform:translateX(-50%);z-index:-1}
+  .dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:12.5px;line-height:1;transition:transform .12s, background .12s;flex:none}
+  .dot.hidden-dot{opacity:0;transform:scale(.5);pointer-events:none}
+  .dot.in-scale{background:#fdf6e0;color:#1d4530;border:2px solid #fff8e6;box-shadow:0 3px 10px rgba(0,0,0,.35)}
+  .dot.is-root{background:var(--brass-bright);color:#2a1c02;border:2px solid #fff8e6;box-shadow:0 0 0 3px rgba(217,168,63,.45),0 3px 10px rgba(0,0,0,.35)}
+  .cell:active .dot{transform:scale(1.12)}
+  .dot.flash{transform:scale(1.25)}
+  .dot.correct{background:#22c55e !important;color:#fff !important}
+  .dot.wrong{background:#ef4444 !important;color:#fff !important}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;padding:12px 4px 2px;font-size:13.5px;color:var(--muted)}
+  .legend i{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:-2px;margin-right:6px}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;padding:0 4px}
+  .toggle-row label{display:inline-flex;gap:9px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:9px 13px;font-weight:600;font-size:14px;cursor:pointer;min-height:44px}
+  .toggle-row input{width:18px;height:18px;accent-color:var(--brass)}
+  .hint{font-size:13.5px;color:var(--muted);line-height:1.5}
+  /* ear training */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  @media(max-width:600px){ .stats{grid-template-columns:repeat(2,1fr)} }
+  .stat{background:var(--panel);border:1.5px solid var(--line);border-radius:10px;padding:14px;text-align:center;box-shadow:var(--shadow)}
+  .stat b{font-family:"Zilla Slab",serif;font-size:30px;display:block;line-height:1;color:var(--pine)}
+  .stat span{font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .quiz-card{padding:20px}
+  .quiz-top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .quiz-top h2{font-family:"Zilla Slab",serif;margin:0;font-size:24px;color:var(--pine)}
+  .quiz-top p{margin:5px 0 0;color:var(--muted);line-height:1.5;max-width:520px;font-size:15px}
+  .big-play{width:76px;height:76px;border-radius:50%;border:0;background:var(--brass);color:#241a03;font-size:13px;font-weight:800;flex:none;box-shadow:0 10px 24px rgba(168,123,31,.40);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+  .big-play span{font-size:22px;line-height:1}
+  .feedback{margin-top:16px;border-radius:12px;padding:14px 16px;font-weight:600;line-height:1.5;display:none}
+  .feedback.show{display:block}
+  .feedback.good{background:var(--good-bg);color:var(--good);border:1px solid #bfe3cd}
+  .feedback.bad{background:var(--bad-bg);color:var(--bad);border:1px solid #f2c4c0}
+  .feedback.info{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+  @media(max-width:560px){ .choices{grid-template-columns:1fr} }
+  .choice{border:2px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:16px;text-align:left}
+  .choice b{font-family:"Zilla Slab",serif;font-size:19px;display:block}
+  .choice span{color:var(--muted);font-size:13.5px;font-family:"IBM Plex Mono",monospace}
+  .choice.correct{border-color:var(--good);background:var(--good-bg)}
+  .choice.wrong{border-color:var(--bad);background:var(--bad-bg)}
+  .quiz-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  /* readme */
+  .readme-card{padding:26px 22px}
+  @media(min-width:760px){ .readme-card{padding:36px 40px} }
+  .readme-card h2{font-family:"Zilla Slab",serif;font-size:30px;margin:0 0 6px;color:var(--pine)}
+  .readme-card h3{font-family:"Zilla Slab",serif;font-size:21px;margin:28px 0 8px;color:var(--pine)}
+  .readme-card p,.readme-card li{line-height:1.7;font-size:16px;color:var(--ink)}
+  .readme-card p{margin:10px 0}
+  .readme-card ul,.readme-card ol{padding-left:22px;margin:8px 0}
+  .readme-card li{margin:5px 0}
+  .prompt-box{background:var(--pine);color:#f4efdb;border-radius:8px;padding:18px 18px 14px;margin:14px 0}
+  @media (prefers-color-scheme: dark){ .prompt-box{background:#0a1409;border:1px solid var(--line)} }
+  .prompt-box .who{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--brass-bright);margin-bottom:8px}
+  .prompt-box p{color:#f4efdb;margin:0 0 8px;font-size:15.5px}
+  .readme-card code{font-family:"IBM Plex Mono",monospace;font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:6px;border:1px solid var(--line)}
+  .tech-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:15px}
+  .tech-table th,.tech-table td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.5}
+  .tech-table th{color:var(--muted);font-size:12.5px;text-transform:uppercase;letter-spacing:.05em}
+  footer{margin-top:28px;color:var(--muted);font-size:13.5px;line-height:1.6;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="intro">
+    <h1>Every note on the neck,<br><em>lit up and playable.</em></h1>
+    <p>Pick a chord or a scale and watch it appear on the fretboard — then tap any note to hear it. When you're ready, switch to <strong>Ear Training</strong> and start learning to hear what you play. No downloads, no audio files. Every sound is made live in your browser.</p>
+    <p class="byline">Vibe Coded by Rick Aquilia</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" aria-selected="true" data-tab="explorer">🎸 &nbsp;Explorer</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="training">👂 &nbsp;Ear Training</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="readme">📖 &nbsp;How I Built This</button>
+  </div>
+
+  <!-- ============ EXPLORER ============ -->
+  <section class="panel-section active" id="sec-explorer">
+    <div class="card controls">
+      <div class="controls-grid">
+        <div>
+          <label class="field-label" for="rootSelect">Root note</label>
+          <select id="rootSelect"></select>
+        </div>
+        <div>
+          <span class="field-label">Chord or scale</span>
+          <div class="seg" id="catSeg">
+            <button type="button" class="on" data-cat="chord">Chords</button>
+            <button type="button" data-cat="scale">Scales</button>
+          </div>
+          <div class="pills" id="typePills"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card board-card">
+      <div class="board-head">
+        <div>
+          <h2 class="now-title" id="nowTitle">C Major</h2>
+          <p class="now-sub" id="nowSub"></p>
+          <div class="note-chips" id="noteChips"></div>
+        </div>
+        <div class="play-actions">
+          <button class="btn btn-ghost" id="playNotesBtn" type="button">▶ Play notes</button>
+          <button class="btn btn-primary" id="playAllBtn" type="button">Strum / Run it</button>
+        </div>
+      </div>
+      <div class="board-scroll"><div class="fretboard" id="explorerBoard"></div></div>
+      <div class="legend">
+        <span><i style="background:var(--brass-bright)"></i>Root note</span>
+        <span><i style="background:#fdf6e0;border:1.5px solid #d8c690"></i>Other notes in the chord / scale</span>
+        <span>Tap any lit note to hear it. Open strings are on the left of the nut.</span>
+      </div>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="labelToggle" checked> Show note names on the dots</label>
+        <label><input type="checkbox" id="allNotesToggle"> Show every note (faint guide)</label>
+      </div>
+      <p class="hint" style="padding:4px 4px 0">Standard tuning, low to high: E A D G B e. The board runs from the open strings to the 15th fret. If you're working on a shape, try this: pick the chord, hit <strong>Strum</strong>, then tap the notes one string at a time from low to high and say the note names out loud. Boring, works every time.</p>
+    </div>
+  </section>
+
+  <!-- ============ EAR TRAINING ============ -->
+  <section class="panel-section" id="sec-training">
+    <div class="stats">
+      <div class="stat"><b id="statScore">0</b><span>Score</span></div>
+      <div class="stat"><b id="statStreak">0</b><span>Streak 🔥</span></div>
+      <div class="stat"><b id="statBest">0</b><span>Best streak</span></div>
+      <div class="stat"><b id="statAcc">—</b><span>Accuracy</span></div>
+    </div>
+
+    <div class="card controls" style="margin-bottom:16px">
+      <span class="field-label">Training mode</span>
+      <div class="seg" id="quizSeg" style="max-width:480px">
+        <button type="button" class="on" data-qmode="note">Guess the Note</button>
+        <button type="button" data-qmode="chord">Guess the Chord</button>
+      </div>
+      <p class="hint" style="margin:12px 0 0" id="quizModeHint">You'll hear one note. Tap where that note lives on the fretboard below — any position with the right note name counts.</p>
+    </div>
+
+    <div class="card quiz-card">
+      <div class="quiz-top">
+        <div>
+          <h2 id="quizTitle">Round 1 — what note is that?</h2>
+          <p id="quizPrompt">Hit play, listen hard, then tap your answer on the fretboard. You can replay as many times as you need — no penalty.</p>
+        </div>
+        <button class="big-play" id="quizPlayBtn" type="button"><span>▶</span>PLAY</button>
+      </div>
+
+      <div class="feedback" id="quizFeedback" role="status"></div>
+
+      <div id="chordChoicesWrap" style="display:none">
+        <div class="choices" id="chordChoices"></div>
+      </div>
+
+      <div id="quizBoardWrap">
+        <div class="board-scroll" style="margin-top:16px"><div class="fretboard" id="quizBoard"></div></div>
+        <p class="hint" style="margin-top:8px" id="quizBoardHint">Tap a note on the board to answer. Every position is playable, lit or not.</p>
+      </div>
+
+      <div class="quiz-actions">
+        <button class="btn btn-ghost" id="quizReplayBtn" type="button">↻ Replay sound</button>
+        <button class="btn btn-navy" id="quizNextBtn" type="button" disabled>Next round →</button>
+        <button class="btn btn-ghost" id="quizResetBtn" type="button">Reset score</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;padding:18px 20px">
+      <h3 style="font-family:'Zilla Slab',serif;margin:0 0 8px;font-size:19px;color:var(--pine)">How to actually get better at this</h3>
+      <p class="hint" style="font-size:14.5px">Five minutes a day beats an hour once a week. Start with Guess the Note until you're hitting 7 or 8 out of 10, then mix in chords. The trick that helped me: before you tap, sing the note back and try to picture where your fingers already know it from a song you play. Your ear usually knows more than you think — it's the connecting it to the fretboard that's the work.</p>
+    </div>
+  </section>
+
+  <!-- ============ README ============ -->
+  <section class="panel-section" id="sec-readme">
+    <div class="card readme-card" id="readmeContent">
+      <h2>Fretboard Explorer — how I built this (with a lot of help from AI)</h2>
+      <p>Hi, I'm Rick. I play guitar — American Strat, mostly classic rock and metal, Frusciante is my guy — and I've been meaning to get serious about two things for a while: actually knowing the fretboard instead of just knowing shapes, and training my ear. I also wanted something public I could point people to that shows how I work with AI to build software. Not a tutorial I copied. A real thing I wanted, built by talking to an AI until it existed.</p>
+      <p>So this is that. One page, no sign-up, no downloads. Pick a chord or a scale and it lights up on the fretboard and plays. Then there's an ear training game that plays you a note or a chord and makes you find it. This page is the live demo, and everything below is honestly how it got made.</p>
+
+      <h3>How this started</h3>
+      <p>I didn't start with a spec. I started with a question. I asked the AI to brainstorm with me:</p>
+      <div class="prompt-box"><div class="who">Me, first message</div>
+        <p>"I want to have something public on my GitHub that shows I know how to use AI for coding, vibe coding, etc. — without exposing my other sites. What's a cool simple thing to make via vibe coding that's simple to understand? Anything with guitar, comics, video games… something you can spin up and showcase and then the person can click through?"</p>
+      </div>
+      <p>It came back with three ideas: a "what should I play tonight" game picker, a comic pull-list tracker for my Fantastic Four / Spider-Man / Wolverine runs, and this fretboard thing. The fretboard won because it was the only one I'd actually use every week. That's my first rule with this stuff now: build the thing you'll open again on Tuesday, not the thing that just demos well.</p>
+
+      <h3>Scoping it down to a first version</h3>
+      <p>My instinct is to ask for everything at once. I've learned that gets you a mess. So the next prompt was about cutting it down:</p>
+      <div class="prompt-box"><div class="who">Me, scoping</div>
+        <p>"Okay, the fretboard explorer. For version one I just want: pick any chord or scale, see it light up on the fretboard, and hear each note. And an ear training mode — it plays a note or a chord, I tap my answer on the fretboard, and it keeps my score and streak. Two modes to start: guess the note and guess the chord. Keep it to one page."</p>
+      </div>
+      <p>The AI pushed back in a useful way here, which is something I look for now. It pointed out that "tap your answer on the fretboard" works great for a single note, but a chord has a root, a quality (major, minor, 7th…), and about five places to play it — so for chords it suggested tapping the answer as a choice between four chords, then lighting up the shape on the board so you still learn where it lives. I went with that. Good AI collaboration isn't the AI saying yes to everything. It's it catching the awkward bit before you've built it.</p>
+
+      <h3>The audio problem (there wasn't one)</h3>
+      <p>The thing I assumed would be the hard part was sound. I figured we'd need guitar samples, and then licensing, and file sizes, and loading spinners. I asked:</p>
+      <div class="prompt-box"><div class="who">Me, assuming the worst</div>
+        <p>"For the sound, do I need to find guitar recordings somewhere? I don't want to deal with audio files if I can avoid it."</p>
+      </div>
+      <p>Turns out no. Browsers can make sound from nothing using something called the Web Audio API. Every note on this page is generated live with a bit of code — an oscillator for the pitch, a filter and a volume envelope shaped so it decays like a plucked string instead of beeping like a microwave. Is it my Strat through a good amp? No. Is it clearly a note, in tune, the instant you tap, with zero files to load? Yes. For ear training that's honestly the part that matters. This was the biggest lesson of the whole build: <strong>ask the "dumb" question early.</strong> The thing I thought would take a weekend took about twenty lines.</p>
+
+      <h3>How the fretboard math works</h3>
+      <p>This is the part I actually wanted to understand instead of just accepting, because if I couldn't explain it, it wasn't really my project. So I made the AI walk me through it, and it's simpler than it looks:</p>
+      <ul>
+        <li>Every note has a number (musicians call it a MIDI number). The low E string played open is 40. Each fret up adds 1.</li>
+        <li>So any note on the guitar is just: <code>open string number + fret</code>. Third fret on the A string is 45 + 3 = 48, which is C.</li>
+        <li>Turn that number back into a note name by dividing by 12 and taking the remainder — there are only 12 note names, and they repeat every octave.</li>
+        <li>A chord is just a recipe measured from a root note. A major chord is root + 4 + 7. A minor chord is root + 3 + 7. Pick a root, run the recipe, and light up every spot on the board whose number matches.</li>
+      </ul>
+      <p>That's the whole trick. Chords, scales, the quiz answers — all of it is that one idea with different recipes. Once I got that, I could start asking for changes in a smarter way ("add a sus4, it's root + 5 + 7") instead of just saying "make it better."</p>
+
+      <h3>The back-and-forth, honestly</h3>
+      <p>It was not one magic prompt. It never is. Roughly, the loop went like this:</p>
+      <ol>
+        <li><strong>First draft:</strong> the AI built the board and the chord highlighting. It worked, but the board was backwards for how I read tab, and the "notes" sounded like a doorbell.</li>
+        <li><strong>My feedback:</strong> "Flip the board so the high E is on top like tab. And the sound needs to decay like a string, not cut off." Two specific complaints, two specific fixes. Vague feedback ("make it nicer") got me vague results every time I tried it.</li>
+        <li><strong>Ear training:</strong> I asked for score and streak because I know myself — if there's no streak, I won't come back tomorrow. We also argued (politely) about whether a right note in the wrong octave should count. I said yes for note-guessing: hearing the note name is the skill I'm training. Octaves can be level two.</li>
+        <li><strong>Looks:</strong> I told it this one needed its own identity — not the navy and teal from my business site, not the light clay and charcoal from my personal site. We landed on deep pine green and brass, like an old guitar amp in a practice room, with a slab-serif headline and warm paper behind everything. Nothing orange, ever — that rule carries everywhere. It followed the palette across the whole page, including the quiz feedback colors.</li>
+        <li><strong>Testing:</strong> I tapped through every chord at every root looking for wrong notes, because that's the one bug that would make the whole thing worthless. An E major with a wrong note in it teaches you the wrong thing. We checked the recipes against chord charts I trust.</li>
+      </ol>
+
+      <h3>What's under the hood</h3>
+      <table class="tech-table">
+        <tr><th style="width:170px">Piece</th><th>What it is</th></tr>
+        <tr><td><strong>The page</strong></td><td>One single HTML file. The layout, the styling, and all the logic live in it. No framework, no build step, nothing to install. I can open it, read it, and change it — that was deliberate, it's how I like to work.</td></tr>
+        <tr><td><strong>The sound</strong></td><td>The Web Audio API, built into every browser. Notes are synthesized live — no audio files anywhere in the project.</td></tr>
+        <tr><td><strong>The music theory</strong></td><td>About ten chord recipes and eight scale recipes, stored as lists of numbers (intervals from the root). Adding a new chord is adding one line.</td></tr>
+        <tr><td><strong>Hosting</strong></td><td>Free static hosting (GitHub Pages). Push the file, it's live. Public repo, so anyone can read the code and this README.</td></tr>
+        <tr><td><strong>Score &amp; streak</strong></td><td>Kept in the page while you play. Shut the tab and it resets — for version one I decided that's fine. It's a practice toy, not an account system.</td></tr>
+      </table>
+
+      <h3>What I'd do next</h3>
+      <ul>
+        <li>An octave-strict hard mode for Guess the Note.</li>
+        <li>Intervals mode — hear two notes, name the gap between them. That's the real ear training boss level.</li>
+        <li>Left-handed flip for the board. One toggle, and the math doesn't change at all, which still makes me happy.</li>
+        <li>CAGED shapes — highlight one position at a time instead of the whole neck, for actually learning movable shapes.</li>
+      </ul>
+
+      <h3>The honest takeaway</h3>
+      <p>I didn't write most of the code in this project, and I'm not going to pretend I did — that would defeat the entire point of putting it on my GitHub. What I did was decide what to build, cut it down to something finishable, learn the one idea the whole thing runs on, give specific feedback when it wasn't right, and check the output like it mattered, because a teaching tool with wrong notes is worse than no tool.</p>
+      <p>That's what "vibe coding" actually looks like when it works, at least for me. The AI is fast at typing. I'm the one who has to know what good looks like. And now I have a fretboard in my pocket that I use to practice my ear, which was the point all along.</p>
+      <p>— Rick</p>
+
+      <div style="margin-top:26px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-navy" id="downloadReadmeBtn" type="button">⬇ Download this as README.md</button>
+        <button class="btn btn-ghost" id="jumpExplorerBtn" type="button">Back to the fretboard →</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Built with AI assistance — prompts, process, and all — and written up in the “How I Built This” tab.<br>Standard tuning E A D G B e · Frets 0–15 · Sounds are synthesized live, no audio files.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- Music data ---------- */
+var NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+var NOTE_FLATS={"C#":"D♭","D#":"E♭","F#":"G♭","G#":"A♭","A#":"B♭"};
+/* display order: high e (top, like tab) down to low E */
+var STRINGS=[
+ {name:"e", open:64, sw:"1px"},
+ {name:"B", open:59, sw:"1.5px"},
+ {name:"G", open:55, sw:"2px"},
+ {name:"D", open:50, sw:"2.5px"},
+ {name:"A", open:45, sw:"3px"},
+ {name:"E", open:40, sw:"3.5px"}
+];
+var FRETS=15;
+var CHORDS={
+ "Major":{iv:[0,4,7],label:"Major",desc:"The home-base chord. Bright and settled."},
+ "Minor":{iv:[0,3,7],label:"Minor",desc:"Same shape of idea, one note lowered — and the whole mood changes."},
+ "7 (dominant)":{iv:[0,4,7,10],label:"7",desc:"Major with tension on top. The blues and rock workhorse."},
+ "Major 7":{iv:[0,4,7,11],label:"maj7",desc:"Soft, jazzy, a little dreamy."},
+ "Minor 7":{iv:[0,3,7,10],label:"min7",desc:"Smooth minor — funk, soul, and half of R&B live here."},
+ "Sus 4":{iv:[0,5,7],label:"sus4",desc:"Suspended — neither major nor minor, so it wants to resolve."},
+ "Sus 2":{iv:[0,2,7],label:"sus2",desc:"Open and airy. Big in acoustic rock intros."},
+ "Diminished":{iv:[0,3,6],label:"dim",desc:"Tense and unstable — a passing chord, not a home."},
+ "Augmented":{iv:[0,4,8],label:"aug",desc:"Raised fifth. Dreamy, unsettled, cinematic."},
+ "Power (5)":{iv:[0,7,12],label:"5",desc:"Root and fifth, no third. Not major, not minor — just heavy."}
+};
+var SCALES={
+ "Major":{iv:[0,2,4,5,7,9,11],desc:"The parent scale. Everything below is measured against this one."},
+ "Natural Minor":{iv:[0,2,3,5,7,8,10],desc:"The minor scale — rock, metal, and most sad songs."},
+ "Minor Pentatonic":{iv:[0,3,5,7,10],desc:"Five notes, zero wrong answers. The first soloing scale almost everyone learns."},
+ "Major Pentatonic":{iv:[0,2,4,7,9],desc:"The sunny five-note scale — country, pop, and sweet rock solos."},
+ "Blues":{iv:[0,3,5,6,7,10],desc:"Minor pentatonic plus the flattened fifth — the blue note."},
+ "Dorian":{iv:[0,2,3,5,7,9,10],desc:"Minor with a lift. Santana, funk, and modal rock."},
+ "Mixolydian":{iv:[0,2,4,5,7,9,10],desc:"Major with a flat 7 — the classic rock solo sound."},
+ "Harmonic Minor":{iv:[0,2,3,5,7,8,11],desc:"Natural minor with a raised 7th. Dramatic, classical, metal."}
+};
+var INTERVAL_NAMES={0:"R",1:"♭2",2:"2",3:"♭3",4:"3",5:"4",6:"♭5",7:"5",8:"♭6",9:"6",10:"♭7",11:"7",12:"R"};
+
+function pc(midi){ return ((midi%12)+12)%12; }
+function noteName(midi){ return NOTE_NAMES[pc(midi)]; }
+function freq(midi){ return 440*Math.pow(2,(midi-69)/12); }
+
+/* ---------- Audio ---------- */
+var actx=null, master=null;
+function audio(){
+  if(!actx){
+    var AC=window.AudioContext||window.webkitAudioContext;
+    actx=new AC();
+    master=actx.createGain(); master.gain.value=0.85;
+    /* a touch of space: simple feedback delay as cheap reverb */
+    var delay=actx.createDelay(0.5); delay.delayTime.value=0.16;
+    var fb=actx.createGain(); fb.gain.value=0.22;
+    var wet=actx.createGain(); wet.gain.value=0.14;
+    master.connect(actx.destination);
+    master.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(actx.destination);
+  }
+  if(actx.state==="suspended") actx.resume();
+  return actx;
+}
+function pluck(midi, when, vel){
+  var ctx=audio(), t=when||ctx.currentTime, v=vel||0.5;
+  var f=freq(midi);
+  var g=ctx.createGain();
+  var flt=ctx.createBiquadFilter(); flt.type="lowpass"; flt.Q.value=1.1;
+  flt.frequency.setValueAtTime(Math.min(5200,f*9),t);
+  flt.frequency.exponentialRampToValueAtTime(Math.max(500,f*1.6),t+0.55);
+  var o1=ctx.createOscillator(); o1.type="triangle"; o1.frequency.value=f;
+  var o2=ctx.createOscillator(); o2.type="sine"; o2.frequency.value=f;
+  var g2=ctx.createGain(); g2.gain.value=0.55;
+  /* pick attack noise-ish transient */
+  var o3=ctx.createOscillator(); o3.type="square"; o3.frequency.value=f*2;
+  var g3=ctx.createGain(); g3.gain.setValueAtTime(0.10,t); g3.gain.exponentialRampToValueAtTime(0.001,t+0.05);
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(v,t+0.006);
+  g.gain.exponentialRampToValueAtTime(v*0.35,t+0.28);
+  g.gain.exponentialRampToValueAtTime(0.0008,t+1.5);
+  o1.connect(flt); o2.connect(g2); g2.connect(flt); o3.connect(g3); g3.connect(flt);
+  flt.connect(g); g.connect(master);
+  o1.start(t); o2.start(t); o3.start(t);
+  o1.stop(t+1.6); o2.stop(t+1.6); o3.stop(t+0.08);
+}
+function strum(midis, stagger, vel){
+  var ctx=audio(), t=ctx.currentTime+0.03;
+  midis.forEach(function(m,i){ pluck(m, t+i*(stagger||0.055), vel||0.46); });
+}
+
+/* ---------- Fretboard builder ---------- */
+var INLAYS={3:1,5:1,7:1,9:1,12:2,15:1};
+function buildBoard(el, opts){
+  el.innerHTML="";
+  var nums=document.createElement("div"); nums.className="fret-numbers";
+  var s0=document.createElement("span"); s0.textContent="·"; nums.appendChild(s0);
+  for(var f=0;f<=FRETS;f++){ var n=document.createElement("span"); n.textContent=f===0?"open":f; nums.appendChild(n); }
+  el.appendChild(nums);
+  STRINGS.forEach(function(str){
+    var row=document.createElement("div"); row.className="fb-row"; row.style.setProperty("--sw",str.sw);
+    var nm=document.createElement("div"); nm.className="string-name"; nm.textContent=str.name; row.appendChild(nm);
+    for(var fret=0;fret<=FRETS;fret++){
+      (function(fret){
+        var midi=str.open+fret;
+        var cell=document.createElement("button"); cell.type="button";
+        cell.className="cell"+(fret===0?" open-cell":"")+(INLAYS[fret]?" inlay":"");
+        cell.setAttribute("aria-label", str.name+" string, fret "+fret+", "+noteName(midi));
+        cell.dataset.midi=midi;
+        var dot=document.createElement("span"); dot.className="dot hidden-dot"; dot.dataset.midi=midi; dot.textContent="";
+        cell.appendChild(dot);
+        cell.addEventListener("click",function(){ if(opts.onTap) opts.onTap(midi,dot,cell); });
+        row.appendChild(cell);
+      })(fret);
+    }
+    el.appendChild(row);
+  });
+  return el.querySelectorAll(".dot");
+}
+
+/* ---------- Explorer state ---------- */
+var state={ root:0, cat:"chord", type:"Major", labels:true, allNotes:false };
+var rootSelect=document.getElementById("rootSelect");
+NOTE_NAMES.forEach(function(n,i){ var o=document.createElement("option"); o.value=i; o.textContent=n+(NOTE_FLATS[n]?" ("+NOTE_FLATS[n]+")":""); rootSelect.appendChild(o); });
+rootSelect.value="0";
+
+var explorerBoard=document.getElementById("explorerBoard");
+var explorerDots=buildBoard(explorerBoard,{ onTap:function(midi,dot){ flashDot(dot); pluck(midi); } });
+
+function flashDot(dot){ dot.classList.add("flash"); setTimeout(function(){ dot.classList.remove("flash"); },180); }
+
+function currentSet(){
+  var dict = state.cat==="chord"?CHORDS:SCALES;
+  return dict[state.type];
+}
+function renderTypePills(){
+  var wrap=document.getElementById("typePills"); wrap.innerHTML="";
+  var dict = state.cat==="chord"?CHORDS:SCALES;
+  Object.keys(dict).forEach(function(k){
+    var b=document.createElement("button"); b.type="button"; b.className="pill"+(k===state.type?" on":""); b.textContent=k;
+    b.addEventListener("click",function(){ state.type=k; renderTypePills(); renderExplorer(); });
+    wrap.appendChild(b);
+  });
+}
+function renderExplorer(){
+  var set=currentSet();
+  var targetPcs={}; set.iv.forEach(function(iv){ targetPcs[(state.root+iv)%12]=iv; });
+  explorerDots.forEach(function(dot){
+    var midi=+dot.dataset.midi, p=pc(midi);
+    var inSet = targetPcs.hasOwnProperty(p);
+    dot.classList.toggle("hidden-dot", !(inSet||state.allNotes));
+    dot.classList.toggle("in-scale", inSet && (state.root!==p));
+    dot.classList.toggle("is-root", inSet && state.root===p);
+    dot.style.opacity = (!inSet && state.allNotes) ? "0.32" : "1";
+    if(!inSet && state.allNotes){ dot.classList.add("in-scale"); }
+    dot.textContent = state.labels ? (state.allNotes||inSet ? noteName(midi) : "") : (inSet? INTERVAL_NAMES[targetPcs[p]]||"" : "");
+    dot.title=noteName(midi);
+  });
+  var rootName=NOTE_NAMES[state.root];
+  var title = state.cat==="chord" ? rootName+" "+(set.label==="Major"?"Major":set.label==="Minor"?"Minor":set.label) : rootName+" "+state.type;
+  if(state.cat==="chord" && state.type==="Major") title=rootName+" Major";
+  if(state.cat==="chord" && state.type==="Minor") title=rootName+" Minor";
+  document.getElementById("nowTitle").textContent=title;
+  document.getElementById("nowSub").textContent=set.desc+(state.cat==="chord"?" Every lit spot on the board is a note you can play in this chord.":" Every lit spot is in the scale — the pattern repeats every 12 frets.");
+  var chips=document.getElementById("noteChips"); chips.innerHTML="";
+  set.iv.forEach(function(iv){
+    var c=document.createElement("span"); c.className="chip"+(iv===0?" root":"");
+    c.textContent=NOTE_NAMES[(state.root+iv)%12]+" · "+(INTERVAL_NAMES[iv]||iv);
+    chips.appendChild(c);
+  });
+}
+function explorerNotesSorted(){
+  /* one playable voicing-ish run: collect lowest instance per pitch class, low string up */
+  var set=currentSet(), targets={};
+  set.iv.forEach(function(iv){ targets[(state.root+iv)%12]=true; });
+  var found={}, list=[];
+  /* walk strings low->high (reverse display order), frets 0..15, take first hit per pitch class for strum */
+  var lowToHigh=STRINGS.slice().reverse();
+  lowToHigh.forEach(function(str){
+    for(var f=0;f<=12;f++){ var m=str.open+f; if(targets[pc(m)] && !found[pc(m)]){ found[pc(m)]=true; list.push(m); break; } }
+  });
+  return list.sort(function(a,b){return a-b;});
+}
+document.getElementById("playAllBtn").addEventListener("click",function(){
+  var list=explorerNotesSorted();
+  if(state.cat==="chord"){ strum(list,0.07,0.5); }
+  else{
+    var ctx=audio(), t=ctx.currentTime+0.03;
+    var asc=list.slice();
+    /* build a proper ascending scale run from root */
+    var run=[], startMidi=45+ ((state.root - pc(45) +12)%12);
+    currentSet().iv.forEach(function(iv){ run.push(startMidi+iv); });
+    run.push(startMidi+12);
+    run.forEach(function(m,i){ pluck(m,t+i*0.22,0.5); });
+  }
+});
+document.getElementById("playNotesBtn").addEventListener("click",function(){
+  var list=explorerNotesSorted(); var ctx=audio(), t=ctx.currentTime+0.03;
+  list.forEach(function(m,i){ pluck(m,t+i*0.28,0.5); });
+});
+rootSelect.addEventListener("change",function(){ state.root=+this.value; renderExplorer(); });
+document.getElementById("catSeg").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  this.querySelectorAll("button").forEach(function(x){x.classList.remove("on")}); b.classList.add("on");
+  state.cat=b.dataset.cat; state.type = state.cat==="chord"?"Major":"Minor Pentatonic";
+  renderTypePills(); renderExplorer();
+});
+document.getElementById("labelToggle").addEventListener("change",function(){ state.labels=this.checked; renderExplorer(); });
+document.getElementById("allNotesToggle").addEventListener("change",function(){ state.allNotes=this.checked; renderExplorer(); });
+renderTypePills(); renderExplorer();
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll(".tab").forEach(function(tab){
+  tab.addEventListener("click",function(){
+    document.querySelectorAll(".tab").forEach(function(t){t.setAttribute("aria-selected","false")});
+    tab.setAttribute("aria-selected","true");
+    document.querySelectorAll(".panel-section").forEach(function(s){s.classList.remove("active")});
+    document.getElementById("sec-"+tab.dataset.tab).classList.add("active");
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+});
+document.getElementById("jumpExplorerBtn").addEventListener("click",function(){
+  document.querySelector('[data-tab="explorer"]').click();
+});
+
+/* ---------- Ear training ---------- */
+var stats={score:0,streak:0,best:0,total:0,correct:0};
+var quiz={ mode:"note", round:1, targetMidi:null, targetRoot:0, targetType:"Major", answered:false, played:false };
+var quizBoard=document.getElementById("quizBoard");
+var quizDots=buildBoard(quizBoard,{ onTap:function(midi,dot){
+  if(quiz.mode!=="note") { pluck(midi); return; }
+  if(quiz.answered || !quiz.targetMidi && quiz.targetMidi!==0) { pluck(midi); return; }
+  if(!quiz.played){ pluck(midi); return; }
+  answerNote(midi,dot);
+}});
+
+function updateStats(){
+  document.getElementById("statScore").textContent=stats.score;
+  document.getElementById("statStreak").textContent=stats.streak;
+  document.getElementById("statBest").textContent=stats.best;
+  document.getElementById("statAcc").textContent= stats.total? Math.round(stats.correct/stats.total*100)+"%" : "—";
+}
+function setFeedback(kind, html){
+  var fb=document.getElementById("quizFeedback");
+  fb.className="feedback show "+kind; fb.innerHTML=html;
+}
+function clearQuizBoard(){
+  quizDots.forEach(function(d){ d.classList.add("hidden-dot"); d.classList.remove("correct","wrong","is-root","in-scale"); d.textContent=""; d.style.opacity="1"; });
+}
+function revealNote(midiTarget){
+  quizDots.forEach(function(d){
+    var m=+d.dataset.midi;
+    if(pc(m)===pc(midiTarget)){
+      d.classList.remove("hidden-dot"); d.classList.add("in-scale");
+      if(m===midiTarget) d.classList.add("is-root");
+      d.textContent=noteName(m);
+    }
+  });
+}
+function newRound(){
+  quiz.answered=false; quiz.played=false;
+  clearQuizBoard();
+  document.getElementById("quizNextBtn").disabled=true;
+  var fb=document.getElementById("quizFeedback"); fb.className="feedback"; fb.innerHTML="";
+  if(quiz.mode==="note"){
+    document.getElementById("chordChoicesWrap").style.display="none";
+    document.getElementById("quizBoardWrap").style.display="block";
+    document.getElementById("quizTitle").textContent="Round "+quiz.round+" — what note is that?";
+    document.getElementById("quizPrompt").textContent="Hit play, listen hard, then tap your answer on the fretboard. Any position with the right note name counts.";
+    /* pick a target that exists within frets 0-12 */
+    var pool=[];
+    STRINGS.forEach(function(s){ for(var f=0;f<=12;f++) pool.push(s.open+f); });
+    quiz.targetMidi=pool[Math.floor(Math.random()*pool.length)];
+  } else {
+    document.getElementById("quizBoardWrap").style.display="block";
+    document.getElementById("quizBoardHint").textContent="After you answer, the chord's shape lights up here so you can see where it lives.";
+    document.getElementById("quizTitle").textContent="Round "+quiz.round+" — what chord is that?";
+    document.getElementById("quizPrompt").textContent="Hit play and listen to the chord. Is it bright or dark? Settled or tense? Then pick your answer below.";
+    var types=["Major","Minor","7 (dominant)","Minor 7"];
+    quiz.targetType=types[Math.floor(Math.random()*types.length)];
+    quiz.targetRoot=Math.floor(Math.random()*12);
+    buildChordChoices(types);
+  }
+}
+function buildChordChoices(types){
+  var wrap=document.getElementById("chordChoices"); wrap.innerHTML="";
+  document.getElementById("chordChoicesWrap").style.display="block";
+  var correctName=NOTE_NAMES[quiz.targetRoot]+" "+CHORDS[quiz.targetType].label;
+  var opts=[{root:quiz.targetRoot,type:quiz.targetType}];
+  while(opts.length<4){
+    var r=Math.floor(Math.random()*12), t=types[Math.floor(Math.random()*types.length)];
+    if(!opts.some(function(o){return o.root===r&&o.type===t})) opts.push({root:r,type:t});
+  }
+  /* shuffle */
+  for(var i=opts.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=opts[i];opts[i]=opts[j];opts[j]=tmp; }
+  opts.forEach(function(o){
+    var b=document.createElement("button"); b.type="button"; b.className="choice";
+    var name=NOTE_NAMES[o.root]+" "+CHORDS[o.type].label;
+    var notes=CHORDS[o.type].iv.map(function(iv){return NOTE_NAMES[(o.root+iv)%12]}).join(" ");
+    b.innerHTML="<b></b><span></span>"; b.querySelector("b").textContent=name; b.querySelector("span").textContent=notes;
+    b.addEventListener("click",function(){ answerChord(o,b); });
+    wrap.appendChild(b);
+  });
+}
+function playQuizSound(){
+  audio();
+  quiz.played=true;
+  if(quiz.mode==="note"){
+    pluck(quiz.targetMidi, audio().currentTime+0.03, 0.6);
+  } else {
+    var ivs=CHORDS[quiz.targetType].iv;
+    var base=45+((quiz.targetRoot-pc(45)+12)%12);
+    var midis=ivs.map(function(iv){return base+iv});
+    /* add a low root for body */
+    strum([base-12].concat(midis),0.06,0.5);
+    var ctx=audio(); var t=ctx.currentTime+0.75;
+    midis.forEach(function(m){ pluck(m,t,0.42); });
+  }
+}
+function registerResult(ok){
+  stats.total++;
+  if(ok){ stats.correct++; stats.score+= quiz.mode==="note"?10:15; stats.streak++; stats.best=Math.max(stats.best,stats.streak); }
+  else { stats.streak=0; }
+  updateStats();
+}
+function answerNote(midi,dot){
+  if(quiz.answered) return;
+  var ok = pc(midi)===pc(quiz.targetMidi);
+  quiz.answered=true;
+  registerResult(ok);
+  if(ok){
+    dot.classList.remove("hidden-dot"); dot.classList.add("correct"); dot.textContent=noteName(midi);
+    revealNote(quiz.targetMidi);
+    setFeedback("good","✅ <strong>That's it — "+noteName(quiz.targetMidi)+".</strong> Every lit dot on the board is that same note in a different spot. That's the whole game: one note, lots of homes. +10 points.");
+  } else {
+    dot.classList.remove("hidden-dot"); dot.classList.add("wrong"); dot.textContent=noteName(midi);
+    revealNote(quiz.targetMidi);
+    setFeedback("bad","✖ You tapped <strong>"+noteName(midi)+"</strong> — the note was <strong>"+noteName(quiz.targetMidi)+"</strong>. It's lit up now (green ring = the exact one you heard). Sing both notes back and hear the distance between them, then hit Next.");
+  }
+  document.getElementById("quizNextBtn").disabled=false;
+}
+function answerChord(choice, btn){
+  if(quiz.answered) return;
+  quiz.answered=true;
+  var ok = choice.root===quiz.targetRoot && choice.type===quiz.targetType;
+  registerResult(ok);
+  var buttons=document.querySelectorAll("#chordChoices .choice");
+  buttons.forEach(function(b){
+    var name=b.querySelector("b").textContent;
+    if(name===NOTE_NAMES[quiz.targetRoot]+" "+CHORDS[quiz.targetType].label) b.classList.add("correct");
+    else if(b===btn && !ok) b.classList.add("wrong");
+    b.disabled=true;
+  });
+  /* light the shape */
+  var targets={}; CHORDS[quiz.targetType].iv.forEach(function(iv){ targets[(quiz.targetRoot+iv)%12]=true; });
+  quizDots.forEach(function(d){
+    var m=+d.dataset.midi;
+    if(targets[pc(m)]){ d.classList.remove("hidden-dot"); d.classList.add(pc(m)===quiz.targetRoot?"is-root":"in-scale"); d.textContent=noteName(m); }
+  });
+  var full=NOTE_NAMES[quiz.targetRoot]+" "+CHORDS[quiz.targetType].label;
+  var notes=CHORDS[quiz.targetType].iv.map(function(iv){return NOTE_NAMES[(quiz.targetRoot+iv)%12]}).join(", ");
+  if(ok) setFeedback("good","✅ <strong>"+full+" — nailed it.</strong> Notes: "+notes+". The shape's lit up on the board now. +15 points.");
+  else setFeedback("bad","✖ That was <strong>"+full+"</strong> ("+notes+"). Listen again with the replay button and compare: major sounds settled, minor sounds darker, a 7th adds that restless top note. The real shape is lit up on the board.");
+  document.getElementById("quizNextBtn").disabled=false;
+}
+document.getElementById("quizPlayBtn").addEventListener("click",playQuizSound);
+document.getElementById("quizReplayBtn").addEventListener("click",playQuizSound);
+document.getElementById("quizNextBtn").addEventListener("click",function(){ quiz.round++; newRound(); playQuizSound(); });
+document.getElementById("quizResetBtn").addEventListener("click",function(){
+  stats={score:0,streak:0,best:0,total:0,correct:0}; quiz.round=1; updateStats(); newRound();
+  setFeedback("info","Score reset. Fresh ears, fresh start — hit play whenever you're ready.");
+});
+document.getElementById("quizSeg").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  this.querySelectorAll("button").forEach(function(x){x.classList.remove("on")}); b.classList.add("on");
+  quiz.mode=b.dataset.qmode; quiz.round=1;
+  document.getElementById("quizModeHint").textContent = quiz.mode==="note"
+    ? "You'll hear one note. Tap where that note lives on the fretboard below — any position with the right note name counts."
+    : "You'll hear a chord strummed, then rung out. Pick which of the four chords it was — then check the shape on the board.";
+  newRound();
+});
+updateStats(); newRound();
+
+/* ---------- README download ---------- */
+document.getElementById("downloadReadmeBtn").addEventListener("click",function(){
+  var md="# Fretboard Explorer\n\n"+
+  "Hi, I'm Rick. I play guitar — American Strat, mostly classic rock and metal, Frusciante is my guy — and I've been meaning to get serious about two things for a while: actually knowing the fretboard instead of just knowing shapes, and training my ear. I also wanted something public I could point people to that shows how I work with AI to build software. Not a tutorial I copied. A real thing I wanted, built by talking to an AI until it existed.\n\n"+
+  "Live demo: open `index.html` in any browser. No build step, no install.\n\n"+
+  "## What it does\n\n- **Explorer:** pick any root, chord, or scale and see it light up on a 15-fret board in standard tuning. Tap any note to hear it, strum the chord, or run the scale.\n- **Ear Training — Guess the Note:** hear a note, tap it on the fretboard. Any position with the right note name counts.\n- **Ear Training — Guess the Chord:** hear a chord, pick it from four options, then see its shape light up.\n- Score, streak, best streak, and accuracy while you play.\n\n"+
+  "## How this started\n\nI didn't start with a spec. I started with a question — I asked the AI to brainstorm a public showcase project with me, something with guitar, comics, or video games that a visitor would get in five seconds. It came back with three ideas: a game picker, a comic pull-list tracker, and this. The fretboard won because it was the only one I'd actually use every week. My rule now: build the thing you'll open again on Tuesday.\n\n"+
+  "## Scoping version one\n\nMy instinct is to ask for everything at once, which gets you a mess. So the next prompt cut it down: one page, chord/scale explorer, two ear-training modes, score and streak, that's it. The AI pushed back usefully on one point — tapping a fretboard works great for a single note, but a chord answer is cleaner as a four-way choice with the shape revealed after. I went with that. Good collaboration isn't the AI saying yes to everything.\n\n"+
+  "## The audio (there are no audio files)\n\nI assumed we'd need guitar samples, licensing, and loading spinners. We didn't. The browser's Web Audio API synthesizes every note live — an oscillator for pitch, a filter and decay envelope shaped like a plucked string. The thing I thought would take a weekend took about twenty lines. Lesson: ask the dumb question early.\n\n"+
+  "## The fretboard math\n\nEvery note has a number (a MIDI number). Low E open is 40, each fret adds 1, so any note is `open string + fret`. Divide by 12 and take the remainder to get the note name. A chord is a recipe from a root: major is root + 4 + 7, minor is root + 3 + 7. Chords, scales, and quiz answers are all that one idea with different recipes. Once I understood that, I could ask for changes properly ('add a sus4, it's root + 5 + 7') instead of 'make it better.'\n\n"+
+  "## The build loop, honestly\n\n1. First draft worked, but the board was backwards for how I read tab, and the notes sounded like a doorbell. I gave two specific complaints and got two specific fixes. Vague feedback got vague results every time.\n2. I asked for score and streak because I know myself — no streak, no coming back tomorrow.\n3. We decided a right note in the wrong octave counts in Guess the Note. Hearing the note name is the skill; octaves are level two.\n4. Design rules from me: give it its own look — deep pine green and brass like an old amp, not my other sites' colors — and nothing orange ever.\n5. I tapped through every chord at every root checking for wrong notes, because a teaching tool with a wrong note teaches the wrong thing.\n\n"+
+  "## Under the hood\n\n- One single HTML file — layout, styling, and logic. No framework, no build step.\n- Sound: Web Audio API, synthesized live. Zero audio files.\n- Theory: ten chord recipes and eight scale recipes stored as interval lists. A new chord is one line.\n- Hosting: free static hosting (GitHub Pages). Push the file, it's live.\n- Score/streak live in the page for the session. Close the tab, they reset. Fine for version one.\n\n"+
+  "## What's next\n\n- Octave-strict hard mode for Guess the Note\n- Intervals mode — hear two notes, name the gap\n- Left-handed board flip\n- CAGED shapes, one position at a time\n\n"+
+  "## The honest takeaway\n\nI didn't write most of the code, and I'm not going to pretend I did — that would defeat the point of this repo. I decided what to build, cut it down to something finishable, learned the one idea it runs on, gave specific feedback, and checked the output like it mattered. The AI is fast at typing. I'm the one who has to know what good looks like. And now I have a fretboard in my pocket that I use to practice my ear, which was the point all along.\n\n— Rick\n";
+  var blob=new Blob([md],{type:"text/markdown"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="README.md";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},2000);
+});
+})();
+</script>
+</body>
+</html>
