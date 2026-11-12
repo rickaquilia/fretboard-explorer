@@ -34,11 +34,11 @@ The AI writes the code. My job is knowing what good looks like and saying so cle
 
 Open the page. In Explorer mode, pick a chord or a scale and click any note on the fretboard to hear it. Hit play to hear the whole chord or scale.
 
-In Ear Training mode, pick guess the note or guess the chord. It plays something, you answer, it keeps your score and your streak.
+In Ear Training mode, pick guess the note or guess the chord. It plays something, you answer, it keeps your score and your streak — saved on your device, so they're still there when you come back.
 
 ## What's next
 
-More ear training modes. Intervals first, then chord progressions. Maybe a way to save your best streak. Open to ideas.
+More ear training modes. Intervals first, then chord progressions. Your best streak now saves on your device. Open to ideas.
 
 ## The look
 

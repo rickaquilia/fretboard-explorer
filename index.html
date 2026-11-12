@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="light" />
+<meta name="color-scheme" content="light dark" />
 <link rel="icon" href="data:," />
 <title>Fretboard Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -327,7 +327,7 @@
         <tr><td><strong>The sound</strong></td><td>The Web Audio API, built into every browser. Notes are synthesized live — no audio files anywhere in the project.</td></tr>
         <tr><td><strong>The music theory</strong></td><td>About ten chord recipes and eight scale recipes, stored as lists of numbers (intervals from the root). Adding a new chord is adding one line.</td></tr>
         <tr><td><strong>Hosting</strong></td><td>Free static hosting (GitHub Pages). Push the file, it's live. Public repo, so anyone can read the code and this README.</td></tr>
-        <tr><td><strong>Score &amp; streak</strong></td><td>Kept in the page while you play. Shut the tab and it resets — for version one I decided that's fine. It's a practice toy, not an account system.</td></tr>
+        <tr><td><strong>Score &amp; streak</strong></td><td>Saved on this device, so your score and best streak are still there when you come back. No account, nothing leaves your browser.</td></tr>
       </table>
 
       <h3>What I'd do next</h3>
@@ -381,6 +381,16 @@
     apply(next);
   });
 })();
+/* ---------- Ear-training progress: saved on this device ---------- */
+var PROGRESS_KEY="fretboard-progress";
+function loadProgress(){
+  try{
+    var raw=localStorage.getItem(PROGRESS_KEY); if(!raw) return null;
+    var p=JSON.parse(raw); if(!p||typeof p!=="object") return null;
+    return {score:+p.score||0,streak:+p.streak||0,best:+p.best||0,total:+p.total||0,correct:+p.correct||0};
+  }catch(e){ return null; }
+}
+function saveProgress(){ try{ localStorage.setItem(PROGRESS_KEY,JSON.stringify(stats)); }catch(e){} }
 /* ---------- Music data ---------- */
 var NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 var NOTE_FLATS={"C#":"D♭","D#":"E♭","F#":"G♭","G#":"A♭","A#":"B♭"};
@@ -601,7 +611,7 @@ document.getElementById("jumpExplorerBtn").addEventListener("click",function(){
 });
 
 /* ---------- Ear training ---------- */
-var stats={score:0,streak:0,best:0,total:0,correct:0};
+var stats=loadProgress()||{score:0,streak:0,best:0,total:0,correct:0};
 var quiz={ mode:"note", round:1, targetMidi:null, targetRoot:0, targetType:"Major", answered:false, played:false };
 var quizBoard=document.getElementById("quizBoard");
 var quizDots=buildBoard(quizBoard,{ onTap:function(midi,dot){
@@ -699,6 +709,7 @@ function registerResult(ok){
   if(ok){ stats.correct++; stats.score+= quiz.mode==="note"?10:15; stats.streak++; stats.best=Math.max(stats.best,stats.streak); }
   else { stats.streak=0; }
   updateStats();
+  saveProgress();
 }
 function answerNote(midi,dot){
   if(quiz.answered) return;
@@ -744,7 +755,7 @@ document.getElementById("quizPlayBtn").addEventListener("click",playQuizSound);
 document.getElementById("quizReplayBtn").addEventListener("click",playQuizSound);
 document.getElementById("quizNextBtn").addEventListener("click",function(){ quiz.round++; newRound(); playQuizSound(); });
 document.getElementById("quizResetBtn").addEventListener("click",function(){
-  stats={score:0,streak:0,best:0,total:0,correct:0}; quiz.round=1; updateStats(); newRound();
+  stats={score:0,streak:0,best:0,total:0,correct:0}; quiz.round=1; updateStats(); saveProgress(); newRound();
   setFeedback("info","Score reset. Fresh ears, fresh start — hit play whenever you're ready.");
 });
 document.getElementById("quizSeg").addEventListener("click",function(e){
@@ -763,13 +774,13 @@ document.getElementById("downloadReadmeBtn").addEventListener("click",function()
   var md="# Fretboard Explorer\n\n"+
   "Hi, I'm Rick. I play guitar — American Strat, mostly classic rock and metal, Frusciante is my guy — and I've been meaning to get serious about two things for a while: actually knowing the fretboard instead of just knowing shapes, and training my ear. I also wanted something public I could point people to that shows how I work with AI to build software. Not a tutorial I copied. A real thing I wanted, built by talking to an AI until it existed.\n\n"+
   "Live demo: open `index.html` in any browser. No build step, no install.\n\n"+
-  "## What it does\n\n- **Explorer:** pick any root, chord, or scale and see it light up on a 15-fret board in standard tuning. Tap any note to hear it, strum the chord, or run the scale.\n- **Ear Training — Guess the Note:** hear a note, tap it on the fretboard. Any position with the right note name counts.\n- **Ear Training — Guess the Chord:** hear a chord, pick it from four options, then see its shape light up.\n- Score, streak, best streak, and accuracy while you play.\n\n"+
+  "## What it does\n\n- **Explorer:** pick any root, chord, or scale and see it light up on a 15-fret board in standard tuning. Tap any note to hear it, strum the chord, or run the scale.\n- **Ear Training — Guess the Note:** hear a note, tap it on the fretboard. Any position with the right note name counts.\n- **Ear Training — Guess the Chord:** hear a chord, pick it from four options, then see its shape light up.\n- Score, streak, best streak, and accuracy — saved on your device, so they survive closing the tab.\n\n"+
   "## How this started\n\nI didn't start with a spec. I started with a question — I asked the AI to brainstorm a public showcase project with me, something with guitar, comics, or video games that a visitor would get in five seconds. It came back with three ideas: a game picker, a comic pull-list tracker, and this. The fretboard won because it was the only one I'd actually use every week. My rule now: build the thing you'll open again on Tuesday.\n\n"+
   "## Scoping version one\n\nMy instinct is to ask for everything at once, which gets you a mess. So the next prompt cut it down: one page, chord/scale explorer, two ear-training modes, score and streak, that's it. The AI pushed back usefully on one point — tapping a fretboard works great for a single note, but a chord answer is cleaner as a four-way choice with the shape revealed after. I went with that. Good collaboration isn't the AI saying yes to everything.\n\n"+
   "## The audio (there are no audio files)\n\nI assumed we'd need guitar samples, licensing, and loading spinners. We didn't. The browser's Web Audio API synthesizes every note live — an oscillator for pitch, a filter and decay envelope shaped like a plucked string. The thing I thought would take a weekend took about twenty lines. Lesson: ask the dumb question early.\n\n"+
   "## The fretboard math\n\nEvery note has a number (a MIDI number). Low E open is 40, each fret adds 1, so any note is `open string + fret`. Divide by 12 and take the remainder to get the note name. A chord is a recipe from a root: major is root + 4 + 7, minor is root + 3 + 7. Chords, scales, and quiz answers are all that one idea with different recipes. Once I understood that, I could ask for changes properly ('add a sus4, it's root + 5 + 7') instead of 'make it better.'\n\n"+
   "## The build loop, honestly\n\n1. First draft worked, but the board was backwards for how I read tab, and the notes sounded like a doorbell. I gave two specific complaints and got two specific fixes. Vague feedback got vague results every time.\n2. I asked for score and streak because I know myself — no streak, no coming back tomorrow.\n3. We decided a right note in the wrong octave counts in Guess the Note. Hearing the note name is the skill; octaves are level two.\n4. Design rules from me: give it its own look — deep pine green and brass like an old amp, not my other sites' colors — and nothing orange ever.\n5. I tapped through every chord at every root checking for wrong notes, because a teaching tool with a wrong note teaches the wrong thing.\n\n"+
-  "## Under the hood\n\n- One single HTML file — layout, styling, and logic. No framework, no build step.\n- Sound: Web Audio API, synthesized live. Zero audio files.\n- Theory: ten chord recipes and eight scale recipes stored as interval lists. A new chord is one line.\n- Hosting: free static hosting (GitHub Pages). Push the file, it's live.\n- Score/streak live in the page for the session. Close the tab, they reset. Fine for version one.\n\n"+
+  "## Under the hood\n\n- One single HTML file — layout, styling, and logic. No framework, no build step.\n- Sound: Web Audio API, synthesized live. Zero audio files.\n- Theory: ten chord recipes and eight scale recipes stored as interval lists. A new chord is one line.\n- Hosting: free static hosting (GitHub Pages). Push the file, it's live.\n- Score/streak saved on your device (localStorage) — close the tab, they stick around. No account, no server.\n\n"+
   "## What's next\n\n- Octave-strict hard mode for Guess the Note\n- Intervals mode — hear two notes, name the gap\n- Left-handed board flip\n- CAGED shapes, one position at a time\n\n"+
   "## The honest takeaway\n\nI didn't write most of the code, and I'm not going to pretend I did — that would defeat the point of this repo. I decided what to build, cut it down to something finishable, learned the one idea it runs on, gave specific feedback, and checked the output like it mattered. The AI is fast at typing. I'm the one who has to know what good looks like. And now I have a fretboard in my pocket that I use to practice my ear, which was the point all along.\n\n— Rick\n";
   var blob=new Blob([md],{type:"text/markdown"});
