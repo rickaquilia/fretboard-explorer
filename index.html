@@ -136,6 +136,10 @@
   .choice.correct{border-color:var(--good);background:var(--good-bg)}
   .choice.wrong{border-color:var(--bad);background:var(--bad-bg)}
   .quiz-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+  /* chord-type filters */
+  .filter-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .filter-chip{border:1.5px solid var(--brass);background:var(--panel);color:var(--pine);border-radius:999px;padding:8px 15px;font-weight:700;font-size:14px;cursor:pointer;font-family:"Karla",sans-serif}
+  .filter-chip.off{border-color:var(--line);color:var(--muted);background:var(--panel2);opacity:.75}
   /* readme */
   .readme-card{padding:26px 22px}
   @media(min-width:760px){ .readme-card{padding:36px 40px} }
@@ -237,6 +241,11 @@
         <button type="button" data-qmode="chord">Guess the Chord</button>
       </div>
       <p class="hint" style="margin:12px 0 0" id="quizModeHint">You'll hear one note. Tap where that note lives on the fretboard below — any position with the right note name counts.</p>
+      <div id="chordFiltersWrap" style="display:none;margin-top:14px">
+        <span class="field-label">Chord types in the quiz</span>
+        <div class="filter-chips" id="chordFilters"></div>
+        <p class="hint" style="margin:8px 0 0" id="chordFilterHint">Tap a type to turn it off. It comes right back when you tap it again. Takes effect from the next round.</p>
+      </div>
     </div>
 
     <div class="card quiz-card">
@@ -315,7 +324,7 @@
       <ol>
         <li><strong>First draft:</strong> the AI built the board and the chord highlighting. It worked, but the board was backwards for how I read tab, and the "notes" sounded like a doorbell.</li>
         <li><strong>My feedback:</strong> "Flip the board so the high E is on top like tab. And the sound needs to decay like a string, not cut off." Two specific complaints, two specific fixes. Vague feedback ("make it nicer") got me vague results every time I tried it.</li>
-        <li><strong>Ear training:</strong> I asked for score and streak because I know myself — if there's no streak, I won't come back tomorrow. We also argued (politely) about whether a right note in the wrong octave should count. I said yes for note-guessing: hearing the note name is the skill I'm training. Octaves can be level two.</li>
+        <li><strong>Ear training:</strong> I asked for score and streak because I know myself — if there's no streak, I won't come back tomorrow. We also argued (politely) about whether a right note in the wrong octave should count. I said yes for note-guessing: hearing the note name is the skill I'm training. Octaves can be level two. Later I added chord-type filters to Guess the Chord — I kept tripping on 7ths, so now I can turn them off for a while and bring them back when I'm ready.</li>
         <li><strong>Looks:</strong> I told it this one needed its own identity — not the navy and teal from my business site, not the light clay and charcoal from my personal site. We landed on deep pine green and brass, like an old guitar amp in a practice room, with a slab-serif headline and warm paper behind everything. Nothing orange, ever — that rule carries everywhere. It followed the palette across the whole page, including the quiz feedback colors.</li>
         <li><strong>Testing:</strong> I tapped through every chord at every root looking for wrong notes, because that's the one bug that would make the whole thing worthless. An E major with a wrong note in it teaches you the wrong thing. We checked the recipes against chord charts I trust.</li>
       </ol>
@@ -610,6 +619,39 @@ document.getElementById("jumpExplorerBtn").addEventListener("click",function(){
   document.querySelector('[data-tab="explorer"]').click();
 });
 
+/* ---------- Chord-type filters: saved on this device ---------- */
+var QUIZ_CHORD_TYPES=["Major","Minor","7 (dominant)","Minor 7"];
+var CHORD_FILTER_KEY="fretboard-chord-filters";
+function loadChordFilters(){
+  try{
+    var raw=localStorage.getItem(CHORD_FILTER_KEY);
+    if(!raw) return null;
+    var f=JSON.parse(raw), ok=true;
+    QUIZ_CHORD_TYPES.forEach(function(t){ if(typeof f[t]!=="boolean") ok=false; });
+    return ok?f:null;
+  }catch(e){ return null; }
+}
+function saveChordFilters(){ try{ localStorage.setItem(CHORD_FILTER_KEY, JSON.stringify(chordFilters)); }catch(e){} }
+var chordFilters=loadChordFilters()||{ "Major":true, "Minor":true, "7 (dominant)":true, "Minor 7":true };
+function enabledChordTypes(){ return QUIZ_CHORD_TYPES.filter(function(t){ return chordFilters[t]; }); }
+function renderChordFilters(){
+  var wrap=document.getElementById("chordFilters"); wrap.innerHTML="";
+  QUIZ_CHORD_TYPES.forEach(function(t){
+    var b=document.createElement("button"); b.type="button";
+    b.className="filter-chip"+(chordFilters[t]?"":" off");
+    b.textContent=CHORDS[t].label; b.setAttribute("aria-pressed", chordFilters[t]?"true":"false");
+    b.addEventListener("click",function(){
+      if(chordFilters[t] && enabledChordTypes().length===1){
+        document.getElementById("chordFilterHint").textContent="Keep at least one chord type on — otherwise there's nothing to quiz you on.";
+        return;
+      }
+      chordFilters[t]=!chordFilters[t]; saveChordFilters(); renderChordFilters();
+      document.getElementById("chordFilterHint").textContent="Tap a type to turn it off. It comes right back when you tap it again. Takes effect from the next round.";
+    });
+    wrap.appendChild(b);
+  });
+}
+
 /* ---------- Ear training ---------- */
 var stats=loadProgress()||{score:0,streak:0,best:0,total:0,correct:0};
 var quiz={ mode:"note", round:1, targetMidi:null, targetRoot:0, targetType:"Major", answered:false, played:false };
@@ -663,7 +705,7 @@ function newRound(){
     document.getElementById("quizBoardHint").textContent="After you answer, the chord's shape lights up here so you can see where it lives.";
     document.getElementById("quizTitle").textContent="Round "+quiz.round+" — what chord is that?";
     document.getElementById("quizPrompt").textContent="Hit play and listen to the chord. Is it bright or dark? Settled or tense? Then pick your answer below.";
-    var types=["Major","Minor","7 (dominant)","Minor 7"];
+    var types=enabledChordTypes();
     quiz.targetType=types[Math.floor(Math.random()*types.length)];
     quiz.targetRoot=Math.floor(Math.random()*12);
     buildChordChoices(types);
@@ -762,24 +804,25 @@ document.getElementById("quizSeg").addEventListener("click",function(e){
   var b=e.target.closest("button"); if(!b) return;
   this.querySelectorAll("button").forEach(function(x){x.classList.remove("on")}); b.classList.add("on");
   quiz.mode=b.dataset.qmode; quiz.round=1;
+  document.getElementById("chordFiltersWrap").style.display = quiz.mode==="chord" ? "block" : "none";
   document.getElementById("quizModeHint").textContent = quiz.mode==="note"
     ? "You'll hear one note. Tap where that note lives on the fretboard below — any position with the right note name counts."
     : "You'll hear a chord strummed, then rung out. Pick which of the four chords it was — then check the shape on the board.";
   newRound();
 });
-updateStats(); newRound();
+updateStats(); renderChordFilters(); newRound();
 
 /* ---------- README download ---------- */
 document.getElementById("downloadReadmeBtn").addEventListener("click",function(){
   var md="# Fretboard Explorer\n\n"+
   "Hi, I'm Rick. I play guitar — American Strat, mostly classic rock and metal, Frusciante is my guy — and I've been meaning to get serious about two things for a while: actually knowing the fretboard instead of just knowing shapes, and training my ear. I also wanted something public I could point people to that shows how I work with AI to build software. Not a tutorial I copied. A real thing I wanted, built by talking to an AI until it existed.\n\n"+
   "Live demo: open `index.html` in any browser. No build step, no install.\n\n"+
-  "## What it does\n\n- **Explorer:** pick any root, chord, or scale and see it light up on a 15-fret board in standard tuning. Tap any note to hear it, strum the chord, or run the scale.\n- **Ear Training — Guess the Note:** hear a note, tap it on the fretboard. Any position with the right note name counts.\n- **Ear Training — Guess the Chord:** hear a chord, pick it from four options, then see its shape light up.\n- Score, streak, best streak, and accuracy — saved on your device, so they survive closing the tab.\n\n"+
+  "## What it does\n\n- **Explorer:** pick any root, chord, or scale and see it light up on a 15-fret board in standard tuning. Tap any note to hear it, strum the chord, or run the scale.\n- **Ear Training — Guess the Note:** hear a note, tap it on the fretboard. Any position with the right note name counts.\n- **Ear Training — Guess the Chord:** hear a chord, pick it from four options, then see its shape light up. You can filter which chord types show up, so you can drill just the ones you're working on.\n- Score, streak, best streak, and accuracy — saved on your device, so they survive closing the tab.\n\n"+
   "## How this started\n\nI didn't start with a spec. I started with a question — I asked the AI to brainstorm a public showcase project with me, something with guitar, comics, or video games that a visitor would get in five seconds. It came back with three ideas: a game picker, a comic pull-list tracker, and this. The fretboard won because it was the only one I'd actually use every week. My rule now: build the thing you'll open again on Tuesday.\n\n"+
   "## Scoping version one\n\nMy instinct is to ask for everything at once, which gets you a mess. So the next prompt cut it down: one page, chord/scale explorer, two ear-training modes, score and streak, that's it. The AI pushed back usefully on one point — tapping a fretboard works great for a single note, but a chord answer is cleaner as a four-way choice with the shape revealed after. I went with that. Good collaboration isn't the AI saying yes to everything.\n\n"+
   "## The audio (there are no audio files)\n\nI assumed we'd need guitar samples, licensing, and loading spinners. We didn't. The browser's Web Audio API synthesizes every note live — an oscillator for pitch, a filter and decay envelope shaped like a plucked string. The thing I thought would take a weekend took about twenty lines. Lesson: ask the dumb question early.\n\n"+
   "## The fretboard math\n\nEvery note has a number (a MIDI number). Low E open is 40, each fret adds 1, so any note is `open string + fret`. Divide by 12 and take the remainder to get the note name. A chord is a recipe from a root: major is root + 4 + 7, minor is root + 3 + 7. Chords, scales, and quiz answers are all that one idea with different recipes. Once I understood that, I could ask for changes properly ('add a sus4, it's root + 5 + 7') instead of 'make it better.'\n\n"+
-  "## The build loop, honestly\n\n1. First draft worked, but the board was backwards for how I read tab, and the notes sounded like a doorbell. I gave two specific complaints and got two specific fixes. Vague feedback got vague results every time.\n2. I asked for score and streak because I know myself — no streak, no coming back tomorrow.\n3. We decided a right note in the wrong octave counts in Guess the Note. Hearing the note name is the skill; octaves are level two.\n4. Design rules from me: give it its own look — deep pine green and brass like an old amp, not my other sites' colors — and nothing orange ever.\n5. I tapped through every chord at every root checking for wrong notes, because a teaching tool with a wrong note teaches the wrong thing.\n\n"+
+  "## The build loop, honestly\n\n1. First draft worked, but the board was backwards for how I read tab, and the notes sounded like a doorbell. I gave two specific complaints and got two specific fixes. Vague feedback got vague results every time.\n2. I asked for score and streak because I know myself — no streak, no coming back tomorrow. Later I added chord-type filters to Guess the Chord — I kept tripping on 7ths, so now I can turn them off for a while and bring them back when I'm ready.\n3. We decided a right note in the wrong octave counts in Guess the Note. Hearing the note name is the skill; octaves are level two.\n4. Design rules from me: give it its own look — deep pine green and brass like an old amp, not my other sites' colors — and nothing orange ever.\n5. I tapped through every chord at every root checking for wrong notes, because a teaching tool with a wrong note teaches the wrong thing.\n\n"+
   "## Under the hood\n\n- One single HTML file — layout, styling, and logic. No framework, no build step.\n- Sound: Web Audio API, synthesized live. Zero audio files.\n- Theory: ten chord recipes and eight scale recipes stored as interval lists. A new chord is one line.\n- Hosting: free static hosting (GitHub Pages). Push the file, it's live.\n- Score/streak saved on your device (localStorage) — close the tab, they stick around. No account, no server.\n\n"+
   "## What's next\n\n- Octave-strict hard mode for Guess the Note\n- Intervals mode — hear two notes, name the gap\n- Left-handed board flip\n- CAGED shapes, one position at a time\n\n"+
   "## The honest takeaway\n\nI didn't write most of the code, and I'm not going to pretend I did — that would defeat the point of this repo. I decided what to build, cut it down to something finishable, learned the one idea it runs on, gave specific feedback, and checked the output like it mattered. The AI is fast at typing. I'm the one who has to know what good looks like. And now I have a fretboard in my pocket that I use to practice my ear, which was the point all along.\n\n— Rick\n";

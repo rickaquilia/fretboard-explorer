@@ -34,7 +34,7 @@ The AI writes the code. My job is knowing what good looks like and saying so cle
 
 Open the page. In Explorer mode, pick a chord or a scale and click any note on the fretboard to hear it. Hit play to hear the whole chord or scale.
 
-In Ear Training mode, pick guess the note or guess the chord. It plays something, you answer, it keeps your score and your streak — saved on your device, so they're still there when you come back.
+In Ear Training mode, pick guess the note or guess the chord. It plays something, you answer, it keeps your score and your streak — saved on your device, so they're still there when you come back. In Guess the Chord you can also tap a chord type off to take it out of the quiz, handy when one type keeps tripping you up, and tap it again to bring it back.
 
 ## What's next
 
