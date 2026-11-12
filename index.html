@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="light" />
 <link rel="icon" href="data:," />
 <title>Fretboard Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,14 +19,12 @@
     --shadow:0 10px 26px rgba(74,56,10,.13);
     --radius:10px;
   }
-  @media (prefers-color-scheme: dark){
-    :root{
+  html[data-theme="dark"]{
       --bg:#0d120c; --bg2:#11190f; --panel:#17211a; --panel2:#1f2c20;
       --ink:#f1ecd8; --muted:#a7b29b; --line:#35422f;
       --pine:#f1ecd8; --pine2:#ffffff; --brass:#e0aa3e; --brass-bright:#f0c25e; --brass-soft:#2e2712;
       --shadow:0 10px 30px rgba(0,0,0,.42);
       --good-bg:#14301d; --bad-bg:#3a1a14;
-    }
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -43,11 +41,12 @@
   .intro p strong{color:var(--ink)}
   .byline{margin-top:14px !important;font-family:"IBM Plex Mono",monospace !important;font-size:12.5px !important;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--brass) !important;display:flex;align-items:center;gap:10px}
   .byline::before{content:"";width:28px;height:2px;background:var(--brass);flex:none}
+  .theme-toggle{margin-top:14px;border:1.5px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:8px 14px;font-weight:700;font-size:14px;min-height:40px}
   /* tabs */
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 18px;background:var(--panel);border:1.5px solid var(--line);padding:6px;border-radius:12px;box-shadow:var(--shadow)}
   .tab{flex:1 1 140px;border:0;background:transparent;color:var(--muted);font-weight:700;font-size:15px;padding:11px 14px;border-radius:7px;transition:.15s}
   .tab[aria-selected="true"]{background:var(--pine);color:#f6f0dd}
-  @media (prefers-color-scheme: dark){ .tab[aria-selected="true"]{background:var(--brass);color:#241a03} }
+  html[data-theme="dark"] .tab[aria-selected="true"]{background:var(--brass);color:#241a03}
   .panel-section{display:none}
   .panel-section.active{display:block;animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
@@ -74,14 +73,14 @@
   .note-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
   .chip{font-family:"IBM Plex Mono",monospace;font-weight:700;font-size:13px;padding:6px 10px;border-radius:6px;background:var(--brass-soft);color:var(--pine)}
   .chip.root{background:var(--pine);color:#f6f0dd}
-  @media (prefers-color-scheme: dark){ .chip{color:var(--ink)} .chip.root{background:var(--brass);color:#241a03} }
+  html[data-theme="dark"] .chip{color:var(--ink)} html[data-theme="dark"] .chip.root{background:var(--brass);color:#241a03}
   .play-actions{display:flex;gap:8px;flex-wrap:wrap}
   .btn{border:0;border-radius:8px;padding:11px 16px;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;justify-content:center}
   .btn-primary{background:var(--brass);color:#241a03}
   .btn-primary:active{transform:scale(.98)}
   .btn-ghost{background:var(--panel2);color:var(--ink);border:1.5px solid var(--line)}
   .btn-navy{background:var(--pine);color:#f6f0dd}
-  @media (prefers-color-scheme: dark){ .btn-navy{background:var(--brass);color:#241a03} }
+  html[data-theme="dark"] .btn-navy{background:var(--brass);color:#241a03}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   .board-scroll{overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
   .board-scroll::-webkit-scrollbar{height:8px}
@@ -147,7 +146,7 @@
   .readme-card ul,.readme-card ol{padding-left:22px;margin:8px 0}
   .readme-card li{margin:5px 0}
   .prompt-box{background:var(--pine);color:#f4efdb;border-radius:8px;padding:18px 18px 14px;margin:14px 0}
-  @media (prefers-color-scheme: dark){ .prompt-box{background:#0a1409;border:1px solid var(--line)} }
+  html[data-theme="dark"] .prompt-box{background:#0a1409;border:1px solid var(--line)}
   .prompt-box .who{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--brass-bright);margin-bottom:8px}
   .prompt-box p{color:#f4efdb;margin:0 0 8px;font-size:15.5px}
   .readme-card code{font-family:"IBM Plex Mono",monospace;font-size:.88em;background:var(--panel2);padding:2px 6px;border-radius:6px;border:1px solid var(--line)}
@@ -167,6 +166,7 @@
     <h1>Every note on the neck,<br><em>lit up and playable.</em></h1>
     <p>Pick a chord or a scale and watch it appear on the fretboard — then tap any note to hear it. When you're ready, switch to <strong>Ear Training</strong> and start learning to hear what you play. No downloads, no audio files. Every sound is made live in your browser.</p>
     <p class="byline">Vibe Coded by Rick Aquilia</p>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode">🌙 Dark</button>
   </div>
 
   <div class="tabs" role="tablist" aria-label="Sections">
@@ -361,6 +361,22 @@
 <script>
 (function(){
 "use strict";
+/* ---------- Theme: light is the default, toggle persists ---------- */
+(function(){
+  var KEY="fretboard-theme";
+  var btn=document.getElementById("themeToggle");
+  function apply(t){
+    if(t==="dark"){document.documentElement.setAttribute("data-theme","dark");btn.textContent="\u2600\uFE0F Light";btn.setAttribute("aria-label","Switch to light mode");}
+    else{document.documentElement.removeAttribute("data-theme");btn.textContent="\uD83C\uDF19 Dark";btn.setAttribute("aria-label","Switch to dark mode");}
+  }
+  var saved=null; try{saved=localStorage.getItem(KEY);}catch(e){}
+  apply(saved==="dark"?"dark":"light");
+  btn.addEventListener("click",function(){
+    var next=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";
+    try{localStorage.setItem(KEY,next);}catch(e){}
+    apply(next);
+  });
+})();
 /* ---------- Music data ---------- */
 var NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 var NOTE_FLATS={"C#":"D♭","D#":"E♭","F#":"G♭","G#":"A♭","A#":"B♭"};
