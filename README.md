@@ -12,9 +12,9 @@ So I built the thing I needed.
 
 ## How I built it
 
-I vibe coded it with Muse, my AI assistant. I didn't write the code. I described what I wanted in plain language, tried it, and told it what to change. That loop is the whole workflow: describe, test, correct, repeat.
+I vibe coded it with an AI assistant. I didn't write the code. I described what I wanted in plain language, tried it, and told it what to change. That loop is the whole workflow: describe, test, correct, repeat.
 
-It started with me asking for ideas for a small public project that would show how I use AI to code. Something simple, something people could click through in a few seconds. Muse came back with three ideas: a game picker, a fretboard explorer, and a comic tracker.
+It started with me asking for ideas for a small public project that would show how I use AI to code. Something simple, something people could click through in a few seconds. It came back with three ideas: a game picker, a fretboard explorer, and a comic tracker.
 
 The fretboard one was the obvious pick. Ear training is something I actually need, not just a demo.
 
@@ -48,6 +48,6 @@ The style is its own thing, on purpose. It doesn't copy my Taproot site (navy an
 
 No build step. Just HTML, CSS, and JavaScript. The audio is generated in the browser with the Web Audio API, so there are no sound files to load.
 
-Built with Muse.
+Built with an AI assistant.
 
 Vibe Coded by Rick Aquilia.
